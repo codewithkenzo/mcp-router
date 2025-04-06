@@ -2,4 +2,11 @@ mcp>=1.6.0
 openai>=1.0.0
 python-dotenv>=1.0.0
 pyyaml>=6.0.0
-toml>=0.10.2 
+toml>=0.10.2
+psutil>=5.9.0
+flask>=2.0.0
+
+# Dev dependencies
+pytest>=7.0.0
+pylint>=2.13.0
+black>=22.1.0 
