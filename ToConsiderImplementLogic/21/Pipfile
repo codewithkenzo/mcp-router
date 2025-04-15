@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+langchain = "*"
+slack-bolt = "*"
+langchain-openai = "*"
+langchain-chroma = "*"
+unstructured = "*"
+langchain-community = "*"
+langsmith = "*"
+langchain-experimental = "*"
+duckduckgo-search = "*"
+yfinance = "*"
+markdown-to-mrkdwn = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"
+python_full_version = "3.10.12"
