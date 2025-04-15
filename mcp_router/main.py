@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from .core.openrouter import OpenRouterClient
 from .core.server_manager import MCPServerManager
 from .utils.playwright_utils import PlaywrightMCP
+from .api import APIManager
 
 # Load environment variables
 load_dotenv()
@@ -30,7 +31,8 @@ class MCPRouter:
     
     def __init__(self, config_path: Optional[str] = None,
                  registry_path: Optional[str] = None,
-                 openrouter_api_key: Optional[str] = None):
+                 openrouter_api_key: Optional[str] = None,
+                 api_dir: Optional[str] = None):
         """
         Initialize the MCP Router.
         
@@ -38,32 +40,108 @@ class MCPRouter:
             config_path: Path to the MCP server config file.
             registry_path: Path to the MCP server registry file.
             openrouter_api_key: OpenRouter API key.
+            api_dir: Path to the TypeScript API directory.
         """
         self.server_manager = MCPServerManager(config_path=config_path, registry_path=registry_path)
         self.openrouter_client = OpenRouterClient(api_key=openrouter_api_key)
         self.playwright_mcp = None
         self.mcp_client_initialized = False
+        self.api_manager = APIManager(api_dir=api_dir)
     
     async def initialize(self, initialize_mcp_client: bool = True) -> None:
         """
         Initialize all components of the MCP Router.
         
         Args:
-            initialize_mcp_client: Whether to initialize the MCP client (required for server interactions).
+            initialize_mcp_client: Whether to initialize the MCP client.
         """
-        # Only initialize the MCP client if needed and if it wasn't already initialized
-        if initialize_mcp_client and not self.mcp_client_initialized:
-            try:
-                await self.server_manager.initialize_client()
-                self.mcp_client_initialized = True
-                
-                # Initialize PlaywrightMCP if needed
-                if self.playwright_mcp is None:
-                    client = await self.server_manager.get_client()
-                    self.playwright_mcp = PlaywrightMCP(client)
-            except Exception as e:
-                logger.warning(f"Failed to initialize MCP client: {e}")
-                # Continue anyway, as we might just need OpenRouter functionality
+        # Initialize the server manager
+        await self.server_manager.initialize()
+        
+        # Initialize the MCP client if requested
+        if initialize_mcp_client:
+            await self.initialize_mcp_client()
+    
+    async def initialize_mcp_client(self) -> None:
+        """
+        Initialize the MCP client.
+        """
+        if self.mcp_client_initialized:
+            return
+        
+        # Initialize the Playwright MCP client
+        self.playwright_mcp = PlaywrightMCP()
+        await self.playwright_mcp.initialize()
+        
+        self.mcp_client_initialized = True
+    
+    async def get_available_providers(self) -> List[str]:
+        """
+        Get a list of available LLM providers.
+        
+        Returns:
+            List[str]: A list of provider names.
+        """
+        return self.api_manager.get_available_providers()
+    
+    async def generate_text(self,
+                     provider: str,
+                     prompt: str,
+                     system_prompt: Optional[str] = None,
+                     model: Optional[str] = None,
+                     temperature: float = 0.7,
+                     max_tokens: Optional[int] = None,
+                     stream: bool = False) -> Union[str, AsyncGenerator[str, None]]:
+        """
+        Generate text using a specific provider.
+        
+        Args:
+            provider: The provider name.
+            prompt: The user prompt to generate text from.
+            system_prompt: Optional system prompt to guide the generation.
+            model: Optional model identifier to use for generation.
+            temperature: Sampling temperature (0.0 to 1.0).
+            max_tokens: Maximum number of tokens to generate.
+            stream: Whether to stream the response.
+            
+        Returns:
+            Union[str, AsyncGenerator[str, None]]: Generated text or a stream of text chunks.
+        """
+        return await self.api_manager.generate_text(
+            provider=provider,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=stream
+        )
+    
+    async def get_token_count(self, provider: str, text: str, model: Optional[str] = None) -> int:
+        """
+        Get the number of tokens in the given text for the specified model.
+        
+        Args:
+            provider: The provider name.
+            text: The text to count tokens for.
+            model: Optional model identifier to use for token counting.
+            
+        Returns:
+            int: The number of tokens in the text.
+        """
+        return await self.api_manager.get_token_count(provider, text, model)
+    
+    async def get_available_models(self, provider: str) -> List[Dict[str, Any]]:
+        """
+        Get a list of available models for a specific provider.
+        
+        Args:
+            provider: The provider name.
+            
+        Returns:
+            List[Dict[str, Any]]: A list of model information dictionaries.
+        """
+        return await self.api_manager.get_available_models(provider)
     
     async def list_available_servers(self) -> Dict[str, Any]:
         """

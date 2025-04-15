@@ -44,6 +44,12 @@ setup(
         "toml>=0.10.2",
         "psutil>=5.9.0",
         "flask>=2.0.0",
+        "fastapi>=0.95.0",
+        "uvicorn>=0.21.0",
+        "jinja2>=3.1.2",
+        "websockets>=11.0.0",
+        "aiohttp>=3.8.4",
+        "anthropic>=0.5.0",
     ],
     extras_require={
         "dev": [
@@ -56,6 +62,7 @@ setup(
         "console_scripts": [
             "mcp-router=mcp_router.cli.cli:main",
             "mcp-router-web=mcp_router.frontend.app:main",
+            "mcp-router-chat=mcp_router.api.run_chat:main",
         ],
     },
     classifiers=[
@@ -69,4 +76,4 @@ setup(
         "Programming Language :: Python :: 3.11",
     ],
     python_requires=">=3.8",
-) 
+)
