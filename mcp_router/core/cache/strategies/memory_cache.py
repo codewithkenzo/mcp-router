@@ -79,12 +79,8 @@ class MemoryCache(CacheInterface[K, V]):
         """
         Clean up expired entries.
         """
-        expired_keys = []
-        
-        # Find expired entries
-        for key, entry in self.cache.items():
-            if entry.is_expired():
-                expired_keys.append(key)
+        # Find expired entries using list comprehension
+        expired_keys = [key for key, entry in self.cache.items() if entry.is_expired()]
         
         # Delete expired entries
         for key in expired_keys:

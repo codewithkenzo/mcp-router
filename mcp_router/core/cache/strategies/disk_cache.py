@@ -72,18 +72,13 @@ class DiskCache(CacheInterface[K, V]):
         """
         stats_file = os.path.join(self.cache_dir, "stats.json")
         if os.path.exists(stats_file):
-            try:
-                with open(stats_file, 'r') as f:
-                    stats = json.load(f)
-                
+            stats = self._read_json(stats_file)
+            if stats:
                 self.hits = stats.get("hits", 0)
                 self.misses = stats.get("misses", 0)
                 self.evictions = stats.get("evictions", 0)
                 self.expirations = stats.get("expirations", 0)
                 self.created_at = stats.get("created_at", time.time())
-            
-            except Exception as e:
-                logger.error(f"Error loading cache statistics: {e}")
     
     def _save_stats(self) -> None:
         """
@@ -191,33 +186,23 @@ class DiskCache(CacheInterface[K, V]):
         expired_keys = []
         
         # Find all metadata files
-        for metadata_file in os.listdir(self.metadata_dir):
-            if not metadata_file.endswith(".json"):
+        for filename in os.listdir(self.metadata_dir):
+            if not filename.endswith(".json"):
                 continue
-            
-            metadata_path = os.path.join(self.metadata_dir, metadata_file)
-            key_hash = metadata_file[:-5]  # Remove .json extension
-            
-            try:
-                # Load metadata
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
                 
-                # Check if expired
-                expires_at = metadata.get("expires_at")
-                if expires_at is not None and time.time() > expires_at:
-                    # Delete files
-                    os.remove(metadata_path)
-                    
-                    data_path = self._get_data_path(key_hash)
-                    if os.path.exists(data_path):
-                        os.remove(data_path)
-                    
-                    expired_keys.append(key_hash)
-                    self.expirations += 1
+            metadata_path = os.path.join(self.metadata_dir, filename)
+            key_hash = filename[:-5]  # Remove .json extension
             
-            except Exception as e:
-                logger.error(f"Error cleaning up cache entry {key_hash}: {e}")
+            metadata = self._read_json(metadata_path)
+            if metadata is None:
+                continue
+                
+            expires_at = metadata.get("expires_at")
+            if expires_at is not None and time.time() > expires_at:
+                self._safe_remove(metadata_path)
+                self._safe_remove(self._get_data_path(key_hash))
+                expired_keys.append(key_hash)
+                self.expirations += 1
         
         if expired_keys:
             logger.debug(f"Cleaned up {len(expired_keys)} expired entries")
@@ -476,11 +461,7 @@ class DiskCache(CacheInterface[K, V]):
             Dictionary containing cache statistics
         """
         # Count entries
-        entry_count = 0
-        for metadata_file in os.listdir(self.metadata_dir):
-            if metadata_file.endswith(".json"):
-                entry_count += 1
-        
+        entry_count = sum(1 for filename in os.listdir(self.metadata_dir) if filename.endswith(".json"))
         total_requests = self.hits + self.misses
         hit_rate = self.hits / total_requests if total_requests > 0 else 0
         
@@ -495,3 +476,30 @@ class DiskCache(CacheInterface[K, V]):
             "expirations": self.expirations,
             "uptime": time.time() - self.created_at
         }
+    
+    def _read_json(self, path: str) -> Optional[Dict]:
+        """Read JSON from a file with error handling."""
+        try:
+            with open(path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error reading JSON file {path}: {e}")
+            return None
+
+    def _write_json(self, path: str, data: Dict) -> bool:
+        """Write JSON to a file with error handling."""
+        try:
+            with open(path, 'w') as f:
+                json.dump(data, f)
+            return True
+        except Exception as e:
+            logger.error(f"Error writing JSON file {path}: {e}")
+            return False
+
+    def _safe_remove(self, path: str) -> None:
+        """Safely remove a file with error handling."""
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except Exception as e:
+            logger.error(f"Error removing file {path}: {e}")

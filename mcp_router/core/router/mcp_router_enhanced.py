@@ -145,17 +145,17 @@ class MCPRouterEnhanced:
         # Load server configurations from config
         if "servers" in self.config:
             for server_id, server_config in self.config["servers"].items():
-                self.server_registry.register_server(
-                    server_id,
-                    server_config,
-                    server_config.get("capabilities", [])
+                # Connect to server using adapter
+                connection_task = asyncio.create_task(self.adapter_manager.connect_to_server(server_id, server_config))
+                connection_task.add_done_callback(
+                    lambda t: logger.error(f"Error connecting to server {server_id}: {t.exception()}")
+                    if t.exception() else None
                 )
+                
+                logger.info(f"Registered server: {server_id}")
                 
                 # Store metadata
                 self.metadata_store.store_server_metadata(server_id, server_config)
-                
-                # Connect to server using adapter
-                await self.adapter_manager.connect_to_server(server_id, server_config)
         
         # Start health monitoring
         await self.health_monitor.start_monitoring()

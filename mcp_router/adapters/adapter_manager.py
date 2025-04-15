@@ -68,67 +68,43 @@ class AdapterManager:
         """
         logger.info("Discovering adapters...")
         
-        for adapter_dir in self.adapter_dirs:
-            adapter_dir_path = Path(adapter_dir)
-            if not adapter_dir_path.exists():
-                logger.warning(f"Adapter directory {adapter_dir} does not exist")
-                continue
-            
-            logger.info(f"Searching for adapters in {adapter_dir}")
-            
-            # Find all Python files in the adapter directory
-            for adapter_file in adapter_dir_path.glob("**/*.py"):
-                if adapter_file.name.startswith("_"):
+        try:
+            # Get the adapters directory
+            adapters_dir = os.path.join(os.path.dirname(__file__), "implementations")
+                    
+            # Check if the directory exists
+            if not os.path.exists(adapters_dir):
+                logger.warning(f"Adapters directory not found: {adapters_dir}")
+                return
+                    
+            # Load each adapter module
+            for filename in os.listdir(adapters_dir):
+                if not filename.endswith("_adapter.py") or filename.startswith("__"):
                     continue
-                
+                            
+                adapter_name = filename[:-3]  # Remove .py extension
                 try:
-                    # Load the adapter module
-                    module_name = f"mcp_router_adapter_{adapter_file.stem}"
-                    spec = importlib.util.spec_from_file_location(module_name, adapter_file)
-                    if spec is None or spec.loader is None:
-                        logger.warning(f"Could not load adapter from {adapter_file}")
-                        continue
-                    
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    
+                    # Import the adapter module
+                    module_path = f"mcp_router.adapters.implementations.{adapter_name}"
+                    module = importlib.import_module(module_path)
+                                
                     # Find adapter classes in the module
-                    for name, obj in inspect.getmembers(module):
-                        if (inspect.isclass(obj) and 
-                            issubclass(obj, BaseAdapter) and 
-                            obj != BaseAdapter):
-                            
-                            try:
-                                # Instantiate the adapter
-                                adapter = obj()
+                    for attr_name in dir(module):
+                        attr = getattr(module, attr_name)
+                        if (isinstance(attr, type) and 
+                             issubclass(attr, BaseAdapter) and 
+                             attr is not BaseAdapter):
+                                            
+                            # Register the adapter
+                            adapter_instance = attr()
+                            self.register_adapter(adapter_instance)
+                            logger.info(f"Loaded adapter: {adapter_instance.name}")
                                 
-                                # Get adapter metadata
-                                adapter_name = adapter.get_adapter_name()
-                                adapter_version = adapter.get_adapter_version()
-                                server_type = adapter.get_server_type()
-                                
-                                # Check if adapter with same name is already loaded
-                                if adapter_name in self.adapters:
-                                    logger.warning(f"Adapter {adapter_name} is already loaded, skipping")
-                                    continue
-                                
-                                # Add adapter to the registry
-                                self.adapters[adapter_name] = adapter
-                                
-                                # Add adapter to the server type registry
-                                if server_type not in self.adapters_by_type:
-                                    self.adapters_by_type[server_type] = []
-                                self.adapters_by_type[server_type].append(adapter)
-                                
-                                logger.info(f"Loaded adapter: {adapter_name} v{adapter_version} for server type: {server_type}")
-                            
-                            except Exception as e:
-                                logger.error(f"Error loading adapter from {adapter_file}: {e}")
-                
                 except Exception as e:
-                    logger.error(f"Error loading adapter module from {adapter_file}: {e}")
-        
-        logger.info(f"Discovered {len(self.adapters)} adapters for {len(self.adapters_by_type)} server types")
+                    logger.error(f"Error loading adapter {adapter_name}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error discovering adapters: {e}")
     
     async def shutdown(self) -> None:
         """

@@ -16,6 +16,7 @@ from typing import Dict, List, Any, Optional, Set, Tuple, Type, TypeVar
 from pathlib import Path
 
 from mcp_router.core.plugins.plugin_interface import PluginInterface, RouterExtensionPlugin, ServerAdapterPlugin, RoutingStrategyPlugin
+from mcp_router.core.plugins.base_plugin import BasePlugin
 
 logger = logging.getLogger(__name__)
 
@@ -72,79 +73,43 @@ class PluginManager:
         """
         logger.info("Discovering plugins...")
         
-        for plugin_dir in self.plugin_dirs:
-            plugin_dir_path = Path(plugin_dir)
-            if not plugin_dir_path.exists():
-                logger.warning(f"Plugin directory {plugin_dir} does not exist")
-                continue
-            
-            logger.info(f"Searching for plugins in {plugin_dir}")
-            
-            # Find all Python files in the plugin directory
-            for plugin_file in plugin_dir_path.glob("**/*.py"):
-                if plugin_file.name.startswith("_"):
+        try:
+            # Get the plugins directory
+            plugins_dir = os.path.join(os.path.dirname(__file__), "..", "..", "plugins")
+                    
+            # Check if the directory exists
+            if not os.path.exists(plugins_dir):
+                logger.warning(f"Plugins directory not found: {plugins_dir}")
+                return
+                    
+            # Load each plugin module
+            for filename in os.listdir(plugins_dir):
+                if not (filename.endswith(".py") and not filename.startswith("__")):
                     continue
-                
+                            
+                plugin_name = filename[:-3]  # Remove .py extension
                 try:
-                    # Load the plugin module
-                    module_name = f"mcp_router_plugin_{plugin_file.stem}"
-                    spec = importlib.util.spec_from_file_location(module_name, plugin_file)
-                    if spec is None or spec.loader is None:
-                        logger.warning(f"Could not load plugin from {plugin_file}")
-                        continue
-                    
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    
+                    # Import the plugin module
+                    module_path = f"mcp_router.plugins.{plugin_name}"
+                    module = importlib.import_module(module_path)
+                                
                     # Find plugin classes in the module
-                    for name, obj in inspect.getmembers(module):
-                        if (inspect.isclass(obj) and 
-                            issubclass(obj, PluginInterface) and 
-                            obj != PluginInterface and
-                            obj != RouterExtensionPlugin and
-                            obj != ServerAdapterPlugin and
-                            obj != RoutingStrategyPlugin):
-                            
-                            try:
-                                # Instantiate the plugin
-                                plugin = obj()
+                    for attr_name in dir(module):
+                        attr = getattr(module, attr_name)
+                        if (isinstance(attr, type) and 
+                             issubclass(attr, BasePlugin) and 
+                             attr is not BasePlugin):
+                                            
+                            # Register the plugin
+                            plugin_instance = attr()
+                            self.register_plugin(plugin_instance)
+                            logger.info(f"Loaded plugin: {plugin_instance.name}")
                                 
-                                # Get plugin metadata
-                                plugin_name = plugin.get_name()
-                                plugin_version = plugin.get_version()
-                                plugin_description = plugin.get_description()
-                                
-                                # Determine plugin type
-                                plugin_type = "unknown"
-                                if isinstance(plugin, RouterExtensionPlugin):
-                                    plugin_type = "extension"
-                                elif isinstance(plugin, ServerAdapterPlugin):
-                                    plugin_type = "adapter"
-                                elif isinstance(plugin, RoutingStrategyPlugin):
-                                    plugin_type = "routing"
-                                
-                                # Check if plugin with same name is already loaded
-                                if plugin_name in self.plugins:
-                                    logger.warning(f"Plugin {plugin_name} is already loaded, skipping")
-                                    continue
-                                
-                                # Initialize the plugin
-                                if await plugin.initialize(self.router):
-                                    # Add plugin to the registry
-                                    self.plugins[plugin_name] = plugin
-                                    self.plugin_types[plugin_name] = plugin_type
-                                    
-                                    logger.info(f"Loaded plugin: {plugin_name} v{plugin_version} ({plugin_type})")
-                                else:
-                                    logger.warning(f"Failed to initialize plugin: {plugin_name}")
-                            
-                            except Exception as e:
-                                logger.error(f"Error loading plugin from {plugin_file}: {e}")
-                
                 except Exception as e:
-                    logger.error(f"Error loading plugin module from {plugin_file}: {e}")
-        
-        logger.info(f"Discovered {len(self.plugins)} plugins")
+                    logger.error(f"Error loading plugin {plugin_name}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error discovering plugins: {e}")
     
     async def shutdown(self) -> None:
         """

@@ -63,10 +63,7 @@ class StdioAdapter(BaseAdapter):
             return True
         
         # Check if the server has command and args
-        if "command" in server_config and "args" in server_config:
-            return True
-        
-        return False
+        return "command" in server_config and "args" in server_config
     
     async def connect_to_server(self, server_id: str, server_config: Dict[str, Any]) -> Any:
         """
