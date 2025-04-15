@@ -5,8 +5,17 @@ pyyaml>=6.0.0
 toml>=0.10.2
 psutil>=5.9.0
 flask>=2.0.0
+fastapi>=0.95.0
+uvicorn>=0.21.0
+jinja2>=3.1.2
+websockets>=11.0.0
+aiohttp>=3.8.4
+anthropic>=0.5.0
+
+# For TypeScript API integration
+nodejs>=12.0.0
 
 # Dev dependencies
 pytest>=7.0.0
 pylint>=2.13.0
-black>=22.1.0 
+black>=22.1.0
