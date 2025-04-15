@@ -1,68 +1,33 @@
 #!/usr/bin/env python3
 """
-Setup script for mcp-router.
+Setup script for the MCP Router package.
 """
 
-import os
-import re
 from setuptools import setup, find_packages
-
-# Extract version from package __init__.py
-def get_version():
-    init_path = os.path.join("mcp_router", "__init__.py")
-    if not os.path.isfile(init_path):
-        return "0.1.0"  # Default version
-    with open(init_path, "r") as f:
-        version_match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', f.read())
-    if version_match:
-        return version_match.group(1)
-    return "0.1.0"  # Default version if not found
-
-# Read long description from README
-def get_long_description():
-    readme_path = "mcp_router/README.md"
-    if os.path.isfile(readme_path):
-        with open(readme_path, "r") as f:
-            return f.read()
-    return "MCP Router for Dolphin-MCP with OpenRouter integration"
 
 setup(
     name="mcp-router",
-    version=get_version(),
-    description="MCP Router for Dolphin-MCP with OpenRouter integration",
-    long_description=get_long_description(),
-    long_description_content_type="text/markdown",
-    author="Kenzo",
-    author_email="kenzo@example.com",
-    url="https://github.com/user/mcp-router",
+    version="0.1.0",
+    description="A robust system for managing and routing requests to hundreds of MCP servers",
+    author="Zeeeepa",
+    author_email="info@zeeeepa.com",
+    url="https://github.com/Zeeeepa/Sequencer",
     packages=find_packages(),
     install_requires=[
-        "mcp>=1.6.0",
-        "openai>=1.0.0",
-        "python-dotenv>=1.0.0",
-        "pyyaml>=6.0.0",
-        "toml>=0.10.2",
-        "psutil>=5.9.0",
-        "flask>=2.0.0",
-        "fastapi>=0.95.0",
-        "uvicorn>=0.21.0",
-        "jinja2>=3.1.2",
-        "websockets>=11.0.0",
-        "aiohttp>=3.8.4",
-        "anthropic>=0.5.0",
+        "mcp>=0.1.0",
+        "requests>=2.25.0",
+        "aiohttp>=3.7.4",
+        "pydantic>=1.8.0",
     ],
     extras_require={
+        "openai": ["openai>=1.0.0"],
+        "anthropic": ["anthropic>=0.5.0"],
         "dev": [
-            "pytest>=7.0.0",
-            "pylint>=2.13.0",
-            "black>=22.1.0",
-        ],
-    },
-    entry_points={
-        "console_scripts": [
-            "mcp-router=mcp_router.cli.cli:main",
-            "mcp-router-web=mcp_router.frontend.app:main",
-            "mcp-router-chat=mcp_router.api.run_chat:main",
+            "pytest>=6.0.0",
+            "pytest-asyncio>=0.14.0",
+            "black>=20.8b1",
+            "isort>=5.7.0",
+            "mypy>=0.800",
         ],
     },
     classifiers=[
@@ -73,7 +38,6 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
     ],
     python_requires=">=3.8",
 )
