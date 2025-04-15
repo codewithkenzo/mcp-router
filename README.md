@@ -1,69 +1,31 @@
 # MCP Router
 
-A robust system for managing and routing requests to hundreds of MCP servers efficiently.
+A powerful router for MCP (Model Context Protocol) queries with plugin system, adapter framework, and caching.
 
 ## Features
 
-- **Server Registry**: Manage hundreds of MCP servers with metadata about their capabilities
-- **Metadata Store**: Persistent storage for server metadata and usage statistics
-- **Intelligent Router**: LLM-powered query analysis and server selection
-- **Health Monitoring**: Automatic health checks and status tracking for all servers
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      MCP Router System                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌───────────────────┐        ┌───────────────────────────┐    │
-│  │  Server Registry  │◄───────┤ Intelligent Router        │    │
-│  │                   │        │                           │    │
-│  └───────────┬───────┘        └───────────────┬───────────┘    │
-│              │                                │                 │
-│              ▼                                ▼                 │
-│  ┌───────────────────┐        ┌───────────────────────────┐    │
-│  │  Metadata Store   │◄───────┤ Tool Orchestrator         │    │
-│  │                   │        │                           │    │
-│  └───────────┬───────┘        └───────────────┬───────────┘    │
-│              │                                │                 │
-│              ▼                                ▼                 │
-│  ┌───────────────────────────────────────────────────────┐     │
-│  │                Health Monitoring System                │     │
-│  │                                                        │     │
-│  └───────────────────────────────────────────────────────┘     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     MCP Server Network                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │ Code Index  │  │ Knowledge   │  │ File System │  ...        │
-│  │ MCP Server  │  │ DB Server   │  │ MCP Server  │             │
-│  │             │  │             │  │             │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+- **Dynamic Plugin System**: Easily extend the router's functionality with plugins
+- **MCP Adapter Framework**: Support for different types of MCP servers
+- **Advanced Caching System**: Multi-level caching with memory and disk storage
+- **Intelligent Routing**: Route queries to the most appropriate MCP servers
+- **Health Monitoring**: Monitor the health of MCP servers
+- **Metadata Storage**: Store and retrieve metadata about MCP servers
 
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/Zeeeepa/Sequencer.git
-cd Sequencer
-
-# Install the package
+# Install from source
+git clone https://github.com/Zeeeepa/mcp-router.git
+cd mcp-router
 pip install -e .
 
-# Install optional dependencies
-pip install -e ".[openai,anthropic]"
+# Install with MCP SDK support
+pip install -e ".[mcp]"
 ```
 
 ## Usage
+
+### Basic Usage
 
 ```python
 import asyncio
@@ -100,43 +62,81 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-See the `examples` directory for more examples.
+### Enhanced Usage
+
+```python
+import asyncio
+from mcp_router import MCPRouterEnhanced
+
+async def main():
+    # Create the enhanced MCP Router
+    router = MCPRouterEnhanced(
+        # Enable disk caching
+        use_disk_cache=True,
+        memory_cache_size=1000,
+        disk_cache_size=10000,
+    )
+    
+    # Initialize the router
+    await router.initialize()
+    
+    # Register a server
+    router.register_server(
+        "filesystem",
+        {
+            "name": "Filesystem MCP Server",
+            "description": "Provides access to the local filesystem",
+            "server_type": "stdio",
+            "command": "npx",
+            "args": ["@modelcontextprotocol/server-filesystem", "."],
+        },
+        ["filesystem", "file_read", "file_write", "file_search"]
+    )
+    
+    # Route a request
+    result = await router.route_request("I need to read a file from my filesystem")
+    print(f"Selected Servers: {result['selected_servers']}")
+    
+    # Execute a tool
+    result = await router.execute_tool("filesystem", "readFile", {"path": "README.md"})
+    print(f"File Contents: {result}")
+    
+    # Get cache statistics
+    cache_stats = await router.get_cache_stats()
+    print(f"Cache Stats: {cache_stats}")
+    
+    # Shutdown the router
+    await router.shutdown()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
 
 ## Components
 
-### Server Registry
+### Dynamic Plugin System
 
-The `ServerRegistry` class manages the registration, discovery, and status tracking of MCP servers in the system. It provides methods for:
+The plugin system allows you to extend the router's functionality with custom plugins. Plugins can add new methods to the router, modify the behavior of existing methods, or add support for new types of MCP servers.
 
-- Registering and unregistering servers
-- Getting servers by capability
-- Updating server health status
-- Tracking server capabilities
+### MCP Adapter Framework
 
-### Metadata Store
+The adapter framework allows the router to interact with different types of MCP servers. Adapters provide a unified interface for connecting to servers, executing tools, and checking server health.
 
-The `MetadataStore` class provides a SQLite-based storage system for MCP server metadata, allowing for efficient storage and retrieval of server information. It provides methods for:
+### Advanced Caching System
 
-- Storing and retrieving server metadata
-- Finding servers for specific tasks
-- Recording server usage statistics
-- Managing server tags and capabilities
+The caching system provides efficient storage and retrieval of data with support for multi-level caching. It includes memory and disk caching with optional expiration and invalidation.
 
-### Intelligent Router
+### Intelligent Routing
 
-The `IntelligentRouter` class analyzes user queries and determines the most appropriate MCP servers to handle them based on capabilities and metadata. It provides methods for:
+The intelligent router analyzes user queries and determines the most appropriate MCP servers to handle them. It uses LLMs (Language Model Models) to analyze queries and match them to server capabilities.
 
-- Analyzing queries using LLMs (OpenAI, Anthropic, OpenRouter)
-- Selecting servers based on query analysis
-- Matching query requirements to server capabilities
+### Health Monitoring
 
-### Health Monitor
+The health monitor tracks the health of MCP servers and updates their status in the registry. It periodically checks server health and provides statistics on server performance.
 
-The `HealthMonitor` class provides functionality to monitor the health of MCP servers and update their status in the registry. It provides methods for:
+### Metadata Storage
 
-- Checking server health
-- Monitoring server status over time
-- Tracking response times and error rates
+The metadata store provides persistent storage for server metadata, allowing for efficient storage and retrieval of server information.
 
 ## License
 
