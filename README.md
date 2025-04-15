@@ -1,121 +1,143 @@
 # MCP Router
 
-MCP Router is a Python package for interacting with Model Context Protocol (MCP) servers with OpenRouter LLM integration. It provides a backend for managing MCP servers, executing agent-based tasks, and orchestrating complex workflows using the Upsonic framework.
+A robust system for managing and routing requests to hundreds of MCP servers efficiently.
 
-[![GitHub license](https://img.shields.io/github/license/kenzo/mcp-router)](https://github.com/kenzo/mcp-router/blob/main/LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
+## Features
 
-## 🚀 Features
+- **Server Registry**: Manage hundreds of MCP servers with metadata about their capabilities
+- **Metadata Store**: Persistent storage for server metadata and usage statistics
+- **Intelligent Router**: LLM-powered query analysis and server selection
+- **Health Monitoring**: Automatic health checks and status tracking for all servers
 
-- **MCP Server Management**: Add, edit, and remove MCP servers
-- **OpenRouter Integration**: Query OpenRouter models directly for AI-assisted tasks
-- **Upsonic Integration**: Orchestrate complex multi-step workflows with Upsonic
-- **Intelligent Task Analysis**: Automatically determine which tools are needed for tasks
-- **MCP Protocol Support**: Standardized interaction with MCP servers
-- **API Framework**: Expose functionality via REST API endpoints
-
-## 🏗️ Architecture
-
-The package is structured as follows:
+## Architecture
 
 ```
-mcp_router/
-├── __init__.py
-├── main.py
-├── cli/           # Command line interface
-├── core/          # Core MCP and Upsonic integration
-├── server_management/ # MCP server management
-└── utils/         # Utility functions
+┌─────────────────────────────────────────────────────────────────┐
+│                      MCP Router System                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌───────────────────┐        ┌───────────────────────────┐    │
+│  │  Server Registry  │◄───────┤ Intelligent Router        │    │
+│  │                   │        │                           │    │
+│  └───────────┬───────┘        └───────────────┬───────────┘    │
+│              │                                │                 │
+│              ▼                                ▼                 │
+│  ┌───────────────────┐        ┌───────────────────────────┐    │
+│  │  Metadata Store   │◄───────┤ Tool Orchestrator         │    │
+│  │                   │        │                           │    │
+│  └───────────┬───────┘        └───────────────┬───────────┘    │
+│              │                                │                 │
+│              ▼                                ▼                 │
+│  ┌───────────────────────────────────────────────────────┐     │
+│  │                Health Monitoring System                │     │
+│  │                                                        │     │
+│  └───────────────────────────────────────────────────────┘     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     MCP Server Network                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │ Code Index  │  │ Knowledge   │  │ File System │  ...        │
+│  │ MCP Server  │  │ DB Server   │  │ MCP Server  │             │
+│  │             │  │             │  │             │             │
+│  └─────────────┘  └─────────────┘  └─────────────┘             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## 📋 Prerequisites
+## Installation
 
-- **Python 3.8+**
-- **Docker** (optional, recommended for running MCP servers)
-
-## 🔧 Installation
-
-### Clone the repository
 ```bash
-git clone https://github.com/codewithkenzo/mcp-router.git
-cd mcp-router
-```
+# Clone the repository
+git clone https://github.com/Zeeeepa/Sequencer.git
+cd Sequencer
 
-### Install Python package
-```bash
-# Create a virtual environment (recommended)
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install the package in development mode
+# Install the package
 pip install -e .
+
+# Install optional dependencies
+pip install -e ".[openai,anthropic]"
 ```
 
-## 🚀 Usage
+## Usage
 
-### Use as a module
 ```python
-import mcp_router
+import asyncio
+from mcp_router import MCPRouter
 
-# Initialize an MCP server manager
-server_manager = mcp_router.core.server_manager.ServerManager()
+async def main():
+    # Create the MCP Router
+    router = MCPRouter()
+    
+    # Initialize the router
+    await router.initialize()
+    
+    # Register a server
+    router.register_server(
+        "filesystem",
+        {
+            "name": "Filesystem MCP Server",
+            "description": "Provides access to the local filesystem",
+            "server_type": "stdio",
+            "command": "npx",
+            "args": ["@modelcontextprotocol/server-filesystem", "."],
+        },
+        ["filesystem", "file_read", "file_write", "file_search"]
+    )
+    
+    # Route a request
+    result = await router.route_request("I need to read a file from my filesystem")
+    print(f"Selected Servers: {result['selected_servers']}")
+    
+    # Shutdown the router
+    await router.shutdown()
 
-# Get available MCP servers
-servers = server_manager.get_servers()
-
-# Use OpenRouter integration
-from mcp_router.core import openrouter
-response = openrouter.query("Tell me about MCP")
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-### Run the CLI
-```bash
-# From the project root with virtual environment activated
-python -m mcp_router.cli.cli --help
-```
+See the `examples` directory for more examples.
 
-## 🧩 Components
+## Components
 
-### MCP Server Management
+### Server Registry
 
-The server management module handles:
-- Reading MCP server configuration from `~/.cursor/mcp.json`
-- Starting and stopping MCP servers
-- Communicating with MCP servers
+The `ServerRegistry` class manages the registration, discovery, and status tracking of MCP servers in the system. It provides methods for:
 
-### Upsonic Integration
+- Registering and unregistering servers
+- Getting servers by capability
+- Updating server health status
+- Tracking server capabilities
 
-The Upsonic integration allows for:
-- Creating agentic workflows with MCP tools
-- Analyzing tasks to determine required tools
-- Executing multi-step tasks with various MCP capabilities
+### Metadata Store
 
-### OpenRouter Integration
+The `MetadataStore` class provides a SQLite-based storage system for MCP server metadata, allowing for efficient storage and retrieval of server information. It provides methods for:
 
-The OpenRouter module provides:
-- Access to multiple LLM providers through a single API
-- Query generation and response handling
-- Token usage tracking
+- Storing and retrieving server metadata
+- Finding servers for specific tasks
+- Recording server usage statistics
+- Managing server tags and capabilities
 
-## 🤝 Contributing
+### Intelligent Router
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+The `IntelligentRouter` class analyzes user queries and determines the most appropriate MCP servers to handle them based on capabilities and metadata. It provides methods for:
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+- Analyzing queries using LLMs (OpenAI, Anthropic, OpenRouter)
+- Selecting servers based on query analysis
+- Matching query requirements to server capabilities
 
-## 📄 License
+### Health Monitor
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+The `HealthMonitor` class provides functionality to monitor the health of MCP servers and update their status in the registry. It provides methods for:
 
-## 🙏 Acknowledgments
+- Checking server health
+- Monitoring server status over time
+- Tracking response times and error rates
 
-- [Model Context Protocol](https://modelcontextprotocol.github.io/) for the MCP specification
-- [OpenRouter](https://openrouter.ai/) for providing access to various LLM models
-- [Upsonic](https://github.com/upsonic/upsonic) for the agent framework 
+## License
+
+MIT
