@@ -1,11 +1,14 @@
 """
 MCP Router Package
 
-This package provides a robust system for managing and routing requests
-to hundreds of MCP servers efficiently.
+This package provides a router for MCP queries, allowing for intelligent
+routing of queries to appropriate MCP servers.
 """
 
 from mcp_router.core.router.mcp_router import MCPRouter
+from mcp_router.core.router.mcp_router_enhanced import MCPRouterEnhanced
 
-__version__ = "0.1.0"
-__all__ = ['MCPRouter']
+__all__ = [
+    'MCPRouter',
+    'MCPRouterEnhanced'
+]
